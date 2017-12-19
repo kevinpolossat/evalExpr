@@ -8,10 +8,20 @@ object EvalExpr extends App {
     * | expression '-' term
     * ;
     */
-  def parseExpression() = {
+  def pExpression(): Parser[Double] = {
     // ==> choice(parseTerm | parseExpression andThen choice(parsePlus, parseMinus)andThen parseTerm)
-    ???
+    Parser.choice(Seq(pTerm(), pAddition(), pDifference()))
   }
+
+  def pAddition(): Parser[Double] = ???
+
+  def pDifference(): Parser[Double] = ???
+
+  def pMultiplication(): Parser[Double] = ???
+
+  def pDivision(): Parser[Double] = ???
+
+  def pModulus(): Parser[Double] = ???
 
   /**
     * term
@@ -21,11 +31,20 @@ object EvalExpr extends App {
     * | term '%' factor
     * ;
     */
-  def parseTerm() = {
+  def pTerm(): Parser[Double] = {
     // ==> choice(parseFactor() | parseTerm choice(parseMult, parseDivide, parseModulus) andThen parseFactor)
+    Parser.choice(
+      Seq(
+        pFactor(),
+        pMultiplication(),
+        pDivision(),
+        pModulus()))
     ???
   }
 
+  def pMinus(): Parser[Char] = pChar('-')
+  def pPlus(): Parser[Char] = pChar('+')
+  def pMinusOrPlus(): Parser[Char] = pMinus() <|> pPlus()
   /**
     * factor
     * : primary
@@ -33,9 +52,11 @@ object EvalExpr extends App {
     * | '+' factor
     * ;
     */
-  def parseFactor() = {
-    // ==> choice(parsePrimary | choice(parseMinus, parsePlus) andThen parseFactor)
-    ???
+  def pFactor(): Parser[Double] = {
+    Parser
+      .many(pMinusOrPlus())
+      .andThen(pPrimary())
+      .map{ case (signs, value) => (signs.mkString + value.toString).toDouble }
   }
 
   /**
@@ -46,10 +67,25 @@ object EvalExpr extends App {
     * | '(' expression ')'
     * ;
     */
-  def parsePrimary() = {
+  def pPrimary(): Parser[Double] = {
     // ==> choice(parseParenthesisOpen andThen parseExpression andThen parseParenthesisClose | parseFloat)
+    pDouble()
+  }
+
+  /**
+    * IDENTIFIER
+    * : "v(" expression ")"
+    * @return
+    */
+  def pIdentifier(): Parser[Double] = { // TODO Define list of identifier
+    // ==> "v(" between ")"
     ???
   }
+
+  /**
+    * '(' expr ')'
+    */
+  def pBetweenParenthesis(): Parser[Double] = ???
 
   def pString(s: String): Parser[String] = (sequence(s.map(pChar)) |>> (_.mkString)) <|?|> s
 
@@ -100,7 +136,7 @@ object EvalExpr extends App {
 
   def pParenthesisClose() = pChar(')')
 
-  def evalParser() = parseExpression()
+  def evalParser() = pExpression()
 
 
   /**
