@@ -48,5 +48,6 @@ class EvalExprTest extends FlatSpec with Matchers {
     parseDouble("123e4") should be(Right(1230000.0, ""))
     parseDouble("123.4e5") should be(Right(12340000.0, ""))
     parseDouble("123.4e-5") should be(Right(0.001234, ""))
+    parseDouble("123.4e") should be(Right(123.4, "e"))
   }
 }
