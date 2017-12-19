@@ -35,4 +35,15 @@ class ParserTest extends FlatSpec with Matchers {
     pLowerAlpha("xblah") should be (Right('x', "blah"))
     pLowerAlpha("Ablah") should be (Left("any of [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]", "unexpected A"))
   }
+
+  "Parser" should "correctly evaluate between" in {
+    val pABetweenParenthesis = Parser.between(
+      Parser.satisfy(_ == '(', "parse open parenthesis"),
+      pCharA,
+      Parser.satisfy(_ == ')', "parse closing parenthesis"))
+    pABetweenParenthesis("(a)") should be (Right('a', ""))
+    pABetweenParenthesis("") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "No more input"))
+    pABetweenParenthesis("(a") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "No more input"))
+    pABetweenParenthesis("a)") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "unexpected a"))
+  }
 }
