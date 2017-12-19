@@ -66,6 +66,8 @@ case object Parser {
     choice(pChars) <|?|> newLabel
   }
 
+  def between[A, B, C](p1: Parser[A], p2: Parser[B], p3: Parser[C]): Parser[B] = p1 >>! p2 !>> p3
+
   def prettyString[T](res: Result[T]): String = res match {
     case Right(a) => s"$a"
     case Left((label, errorMessage/*, pos*/)) =>
