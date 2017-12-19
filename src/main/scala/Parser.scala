@@ -2,14 +2,15 @@ import Parser._
 
 case object Parser {
   type ErrorMessage = String
-  type RemainingInput = String
+  type Input = String // InputState
+  type RemainingInput = String // InputState
   type ParserLabel = String
   type Success[T] = (T, RemainingInput)
-  type Failure = (ParserLabel, ErrorMessage)
+  type Failure = (ParserLabel, ErrorMessage/*, ParserPosition*/)
   type Result[T] = Either[Failure, Success[T]]
-  type ParserFunc[T] = String => Result[T]
+  type ParserFunc[T] = Input => Result[T]
 
-  def returnP[T](x: T): Parser[T] = new Parser((s: String) => Right(x, s))
+  def returnP[T](x: T): Parser[T] = new Parser((s: Input) => Right(x, s))
 
   def applyP[I, O](fP: Parser[I => O], xP: Parser[I]): Parser[O] = fP !>>! xP |>> { case (f, x) => f(x) }
 
@@ -19,7 +20,7 @@ case object Parser {
     xs.map(_ |>> (List(_))).reduce { (a, b) => (a !>>! b) |>> { case (lhs, rhs) => lhs ::: rhs } }
   }
 
-  def parserZeroOrMore[T](parser: Parser[T], input: String): (List[T], RemainingInput) = {
+  def parserZeroOrMore[T](parser: Parser[T], input: Input): (List[T], RemainingInput) = {
     parser(input) match {
       case Left(_) => (List.empty[T], input)
       case Right((firstValue, remainingInput)) =>
@@ -29,7 +30,7 @@ case object Parser {
   }
 
   def many[T](p: Parser[T]): Parser[List[T]] = {
-    new Parser({ input: String => Right(parserZeroOrMore(p, input)) }, s"many of ${p.label}")
+    new Parser({ input: Input => Right(parserZeroOrMore(p, input)) }, s"many of ${p.label}")
   }
 
   def opt[T](p: Parser[T]): Parser[Option[T]] = {
@@ -39,7 +40,7 @@ case object Parser {
   }
 
   def many1[T](parser: Parser[T]): Parser[List[T]] = {
-    new Parser({ input: String => {
+    new Parser({ input  => {
       parser(input).map { case (firstChar, remainingInput) =>
         val (values, remainingInputRet) = parserZeroOrMore(parser, remainingInput)
         (firstChar :: values, remainingInputRet)
@@ -49,13 +50,11 @@ case object Parser {
   }
 
   def satisfy(predicate: Char => Boolean, label: String): Parser[Char] = {
-    new Parser({ s: String => {
-      if (s.isEmpty) {
-        Left(label, "No more input")
-      }
-      else {
-        val c = s.head
-        if (predicate(c)) Right(c, s.tail) else Left(label, s"unexpected $c")
+    new Parser({ in => {
+      val cOpt = in.headOption
+      cOpt match {
+        case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c"/*, ParserPosition(in)*/)
+        case _ => Left(label, "No more input"/*, ParserPosition(in)*/)
       }
     }
     }, label)
@@ -69,29 +68,34 @@ case object Parser {
 
   def prettyString[T](res: Result[T]): String = res match {
     case Right(a) => s"$a"
-    case Left((label, errorMessage)) => s"Error parsing $label\n$errorMessage"
+    case Left((label, errorMessage/*, pos*/)) =>
+/*      val errorLine = pos.currentLine
+      val colPos = pos.column
+      val linePos = pos.line
+      val strError = "%*s^%s".format(colPos, "", errorMessage)
+      s"Line: $linePos, col: $colPos Error parsing $label\n$errorLine\n$strError"*/
+      s"Error parsing expecting $label\n$errorMessage"
   }
 }
 
 case class Parser[T](parserFunc: ParserFunc[T], label: ParserLabel = "unknown") {
 
   def updateLabel(newLabel: ParserLabel): Parser[T] = {
-    val newParserFunc = {
-      input: String => {
+    Parser({
+      input => {
         parserFunc(input) match {
           case Right(s) => Right(s)
-          case Left((oldLabel, errorMessage)) => Left(newLabel, errorMessage)
+          case Left((_, errorMessage/*, pos*/)) => Left(newLabel, errorMessage/*, pos*/)
         }
       }
-    }
-    Parser(newParserFunc, newLabel)
+    }, newLabel)
   }
 
-  def apply(input: String): Either[(ParserLabel, ErrorMessage), (T, RemainingInput)] = parserFunc(input)
+  def apply(input: Input): Result[T] = parserFunc(input)
 
   def andThen[B](other: Parser[B]): Parser[(T, B)] = {
     val andThenLabel = s"$label andThen ${other.label}"
-    Parser({ s: String => {
+    Parser({ s: Input => {
       parserFunc(s).flatMap { case (matched1, remaining1) =>
         other(remaining1).map { case (matched2, remaining2) => ((matched1, matched2), remaining2) }
       }
@@ -101,7 +105,7 @@ case class Parser[T](parserFunc: ParserFunc[T], label: ParserLabel = "unknown") 
 
   def orElse(other: Parser[T]): Parser[T] = {
     val orElseLabel = s"$label orElse ${other.label}"
-    Parser({ s: String => {
+    Parser({ s: Input => {
       val p1 = parserFunc(s)
       if (p1.isLeft) other(s) else p1
     }

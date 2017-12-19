@@ -5,9 +5,10 @@ case object InputState {
       new InputState(Array.empty[String], Position())
     }
     else {
-      new InputState(in.split("\n"), Position()) // file like with line and col
+      new InputState(in.split("\n"), Position())
     }
   }
+  implicit def fromString(str: String): InputState = InputState(str)
 }
 
 case class InputState(lines: Array[String], position: Position) {
@@ -28,6 +29,8 @@ case class InputState(lines: Array[String], position: Position) {
       }
     }
   }
+
+  def currentLine: String = if (position.line >= lines.length) "EOF" else lines(position.line)
 
   def readAll: List[Char] = {
     def readAllLoop(inputState: InputState, acc: List[Char]): List[Char] = inputState.nextChar match {
