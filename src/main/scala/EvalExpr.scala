@@ -84,9 +84,9 @@ object EvalExpr extends App {
 
   def pString(s: String): Parser[String] = (sequence(s.map(pChar)) |>> (_.mkString)) <|?|> s
 
-  def pChar(charToMatch: Char): Parser[Char] = satisfy(c => charToMatch == c, charToMatch.toString)
+  def pChar(charToMatch: Char): Parser[Elem] = satisfy(c => charToMatch == c, charToMatch.toString)
 
-  def pDigit(): Parser[Char] = satisfy(c => c.isDigit, "digit")
+  def pDigit(): Parser[Elem] = satisfy(c => c.isDigit, "digit")
 
   def pNonZeroDigit(): Parser[Char] = {
     satisfy(c => c.isDigit && c != '0', "1-9")

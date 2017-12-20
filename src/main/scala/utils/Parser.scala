@@ -3,9 +3,10 @@ package utils
 import utils.Parser.{Input, ParserFunc, ParserLabel, Result}
 
 case object Parser {
+  type Elem = Char
+  type Input = IReader[Elem]
+  type RemainingInput = Input
   type ErrorMessage = String
-  type Input = String // utils.InputState
-  type RemainingInput = String // utils.InputState
   type ParserLabel = String
   type Success[T] = (T, RemainingInput)
   type Failure = (ParserLabel, ErrorMessage/*, utils.ParserPosition*/)
@@ -42,7 +43,7 @@ case object Parser {
   }
 
   def many1[T](parser: Parser[T]): Parser[List[T]] = {
-    Parser({ input: String  => {
+    Parser({ input: Input  => {
       parser(input).map { case (firstChar, remainingInput) =>
         val (values, remainingInputRet) = parserZeroOrMore(parser, remainingInput)
         (firstChar :: values, remainingInputRet)
@@ -51,8 +52,8 @@ case object Parser {
     }, s"one or many of ${parser.label}")
   }
 
-  def satisfy(predicate: Char => Boolean, label: String): Parser[Char] = {
-    Parser({ in: String => {
+  def satisfy(predicate: Elem => Boolean, label: String): Parser[Elem] = {
+    Parser({ in: Input => {
       val cOpt = in.headOption
       cOpt match {
         case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c"/*, utils.ParserPosition(in)*/)
@@ -62,7 +63,7 @@ case object Parser {
     }, label)
   }
 
-  def anyOf(chars: TraversableOnce[Char]): Parser[Char] = {
+  def anyOf(chars: TraversableOnce[Elem]): Parser[Elem] = {
     val newLabel = s"any of ${chars.mkString("[", ", ", "]")}"
     val pChars = chars.map { charToMatch => satisfy({ c => c == charToMatch }, charToMatch.toString) }
     choice(pChars) <|?|> newLabel
@@ -70,7 +71,7 @@ case object Parser {
 
   def between[A, B, C](p1: Parser[A], p2: Parser[B], p3: Parser[C]): Parser[B] = p1 >>! p2 !>> p3
 
-  def apply[T](func: ParserFunc[T], label: ParserLabel = "unknown"): Parser[T] = new Parser[T](label){ def apply(in: String) = func(in) }
+  def apply[T](func: ParserFunc[T], label: ParserLabel = "unknown"): Parser[T] = new Parser[T](label){ def apply(in: Input) = func(in) }
 
   def prettyString[T](res: Result[T]): String = res match {
     case Right(a) => s"$a"
@@ -86,7 +87,7 @@ case object Parser {
 
 abstract case class Parser[T](label: ParserLabel = "unknown") extends ParserFunc[T] {
 
-  def apply(in: String): Result[T]
+  def apply(in: Input): Result[T]
 
   def updateLabel(newLabel: ParserLabel): Parser[T] = {
     Parser({

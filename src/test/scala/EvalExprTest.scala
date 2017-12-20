@@ -1,6 +1,7 @@
 import org.scalatest._
 
 import EvalExpr._
+import utils.SimpleStringReader._
 
 class EvalExprTest extends FlatSpec with Matchers {
   val parseExpression = evalParser()
