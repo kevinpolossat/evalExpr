@@ -84,7 +84,7 @@ case object Parser {
   }
 }
 
-abstract case class Parser[T](label: ParserLabel) extends ParserFunc[T] {
+abstract case class Parser[T](label: ParserLabel = "unknown") extends ParserFunc[T] {
 
   def apply(in: String): Result[T]
 
