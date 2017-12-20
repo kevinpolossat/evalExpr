@@ -1,16 +1,18 @@
-import Parser._
+package utils
+
+import utils.Parser.{Input, ParserFunc, ParserLabel, Result}
 
 case object Parser {
   type ErrorMessage = String
-  type Input = String // InputState
-  type RemainingInput = String // InputState
+  type Input = String // utils.InputState
+  type RemainingInput = String // utils.InputState
   type ParserLabel = String
   type Success[T] = (T, RemainingInput)
-  type Failure = (ParserLabel, ErrorMessage/*, ParserPosition*/)
+  type Failure = (ParserLabel, ErrorMessage/*, utils.ParserPosition*/)
   type Result[T] = Either[Failure, Success[T]]
   type ParserFunc[T] = Input => Result[T]
 
-  def returnP[T](x: T): Parser[T] = new Parser((s: Input) => Right(x, s))
+  def returnP[T](x: T): Parser[T] = Parser((s: Input) => Right(x, s))
 
   def applyP[I, O](fP: Parser[I => O], xP: Parser[I]): Parser[O] = fP !>>! xP |>> { case (f, x) => f(x) }
 
@@ -30,7 +32,7 @@ case object Parser {
   }
 
   def many[T](p: Parser[T]): Parser[List[T]] = {
-    new Parser({ input: Input => Right(parserZeroOrMore(p, input)) }, s"many of ${p.label}")
+    Parser({ input: Input => Right(parserZeroOrMore(p, input)) }, s"many of ${p.label}")
   }
 
   def opt[T](p: Parser[T]): Parser[Option[T]] = {
@@ -40,7 +42,7 @@ case object Parser {
   }
 
   def many1[T](parser: Parser[T]): Parser[List[T]] = {
-    new Parser({ input  => {
+    Parser({ input: String  => {
       parser(input).map { case (firstChar, remainingInput) =>
         val (values, remainingInputRet) = parserZeroOrMore(parser, remainingInput)
         (firstChar :: values, remainingInputRet)
@@ -50,11 +52,11 @@ case object Parser {
   }
 
   def satisfy(predicate: Char => Boolean, label: String): Parser[Char] = {
-    new Parser({ in => {
+    Parser({ in: String => {
       val cOpt = in.headOption
       cOpt match {
-        case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c"/*, ParserPosition(in)*/)
-        case _ => Left(label, "No more input"/*, ParserPosition(in)*/)
+        case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c"/*, utils.ParserPosition(in)*/)
+        case _ => Left(label, "No more input"/*, utils.ParserPosition(in)*/)
       }
     }
     }, label)
@@ -68,6 +70,8 @@ case object Parser {
 
   def between[A, B, C](p1: Parser[A], p2: Parser[B], p3: Parser[C]): Parser[B] = p1 >>! p2 !>> p3
 
+  def apply[T](func: ParserFunc[T], label: ParserLabel = "unknown"): Parser[T] = new Parser[T](label){ def apply(in: String) = func(in) }
+
   def prettyString[T](res: Result[T]): String = res match {
     case Right(a) => s"$a"
     case Left((label, errorMessage/*, pos*/)) =>
@@ -80,12 +84,14 @@ case object Parser {
   }
 }
 
-case class Parser[T](parserFunc: ParserFunc[T], label: ParserLabel = "unknown") {
+abstract case class Parser[T](label: ParserLabel) extends ParserFunc[T] {
+
+  def apply(in: String): Result[T]
 
   def updateLabel(newLabel: ParserLabel): Parser[T] = {
     Parser({
       input => {
-        parserFunc(input) match {
+        this(input) match {
           case Right(s) => Right(s)
           case Left((_, errorMessage/*, pos*/)) => Left(newLabel, errorMessage/*, pos*/)
         }
@@ -93,12 +99,10 @@ case class Parser[T](parserFunc: ParserFunc[T], label: ParserLabel = "unknown") 
     }, newLabel)
   }
 
-  def apply(input: Input): Result[T] = parserFunc(input)
-
   def andThen[B](other: Parser[B]): Parser[(T, B)] = {
     val andThenLabel = s"$label andThen ${other.label}"
     Parser({ s: Input => {
-      parserFunc(s).flatMap { case (matched1, remaining1) =>
+      this(s).flatMap { case (matched1, remaining1) =>
         other(remaining1).map { case (matched2, remaining2) => ((matched1, matched2), remaining2) }
       }
     }
@@ -108,13 +112,13 @@ case class Parser[T](parserFunc: ParserFunc[T], label: ParserLabel = "unknown") 
   def orElse(other: Parser[T]): Parser[T] = {
     val orElseLabel = s"$label orElse ${other.label}"
     Parser({ s: Input => {
-      val p1 = parserFunc(s)
+      val p1 = this(s)
       if (p1.isLeft) other(s) else p1
     }
     }) <|?|> orElseLabel
   }
 
-  def map[B](f: T => B): Parser[B] = Parser(parserFunc(_).map(x => (f(x._1), x._2)), label)
+  def map[B](f: T => B): Parser[B] = Parser(this(_).map(x => (f(x._1), x._2)), label)
 
   def <|>(other: Parser[T]): Parser[T] = orElse(other)
 

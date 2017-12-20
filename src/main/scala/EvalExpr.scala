@@ -1,17 +1,7 @@
-import Parser._
+import utils.Parser
+import utils.Parser._
 
 object EvalExpr extends App {
-  /**
-    * expression
-    * : term
-    * | expression '+' term
-    * | expression '-' term
-    * ;
-    */
-  def pExpression(): Parser[Double] = {
-    // ==> choice(parseTerm | parseExpression andThen choice(parsePlus, parseMinus)andThen parseTerm)
-    Parser.choice(Seq(pTerm(), pAddition(), pDifference()))
-  }
 
   def pAddition(): Parser[Double] = ???
 
@@ -24,6 +14,18 @@ object EvalExpr extends App {
   def pModulus(): Parser[Double] = ???
 
   /**
+    * expression
+    * : term
+    * | expression '+' term
+    * | expression '-' term
+    * ;
+    */
+  def pExpression(): Parser[Double] = {
+//    pTerm()
+    ???
+  }
+
+  /**
     * term
     * : factor
     * | term '*' factor
@@ -33,13 +35,7 @@ object EvalExpr extends App {
     */
   def pTerm(): Parser[Double] = {
     // ==> choice(parseFactor() | parseTerm choice(parseMult, parseDivide, parseModulus) andThen parseFactor)
-    Parser.choice(
-      Seq(
-        pFactor(),
-        pMultiplication(),
-        pDivision(),
-        pModulus()))
-    ???
+    pFactor()
   }
 
   def pMinus(): Parser[Char] = pChar('-')
@@ -53,10 +49,7 @@ object EvalExpr extends App {
     * ;
     */
   def pFactor(): Parser[Double] = {
-    Parser
-      .many(pMinusOrPlus())
-      .andThen(pPrimary())
-      .map{ case (signs, value) => (signs.mkString + value.toString).toDouble }
+    pPrimary()
   }
 
   /**
@@ -69,7 +62,7 @@ object EvalExpr extends App {
     */
   def pPrimary(): Parser[Double] = {
     // ==> choice(parseParenthesisOpen andThen parseExpression andThen parseParenthesisClose | parseFloat)
-    pDouble()
+    pDouble() <|> pBetweenParenthesis()
   }
 
   /**
@@ -85,7 +78,9 @@ object EvalExpr extends App {
   /**
     * '(' expr ')'
     */
-  def pBetweenParenthesis(): Parser[Double] = ???
+  def pBetweenParenthesis(): Parser[Double] = {
+    pParenthesisOpen() >>! pExpression !>> pParenthesisClose()
+  }
 
   def pString(s: String): Parser[String] = (sequence(s.map(pChar)) |>> (_.mkString)) <|?|> s
 
@@ -136,7 +131,7 @@ object EvalExpr extends App {
 
   def pParenthesisClose() = pChar(')')
 
-  def evalParser() = pExpression()
+  def evalParser() = pExpression
 
 
   /**

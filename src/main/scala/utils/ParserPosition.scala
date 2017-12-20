@@ -1,3 +1,5 @@
+package utils
+
 case object ParserPosition {
   def apply(inputState: InputState): ParserPosition = {
     new ParserPosition(

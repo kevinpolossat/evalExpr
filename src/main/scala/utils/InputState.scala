@@ -1,3 +1,5 @@
+package utils
+
 
 case object InputState {
   def apply(in: String): InputState = {

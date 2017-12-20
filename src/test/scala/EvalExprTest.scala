@@ -3,6 +3,8 @@ import org.scalatest._
 import EvalExpr._
 
 class EvalExprTest extends FlatSpec with Matchers {
+  val parseExpression = evalParser()
+
   "optSign" should "correctly parse plus or minus sign" in {
     val parseOptSign = pOptSign()
     parseOptSign("-") should be(Right(Some('-'), ""))
@@ -36,18 +38,23 @@ class EvalExprTest extends FlatSpec with Matchers {
     parseOptExponnent("e+321321eza") should be(Right(Some("+321321"), "eza"))
   }
 
-  "pDouble" should "correctly parse double" in {
-    val parseDouble = pDouble()
-    parseDouble("123") should be(Right(123.0, ""))
-    parseDouble("-123") should be(Right(-123.0, ""))
-    parseDouble("123.4") should be(Right(123.4, ""))
-    parseDouble("123") should be(Right(123.0, ""))
-    parseDouble("-123") should be(Right(-123.0, ""))
-    parseDouble("-123.") should be(Right(-123.0, "."))
-    parseDouble("00.4") should be (Right(0.0, "0.4"))
-    parseDouble("123e4") should be(Right(1230000.0, ""))
-    parseDouble("123.4e5") should be(Right(12340000.0, ""))
-    parseDouble("123.4e-5") should be(Right(0.001234, ""))
-    parseDouble("123.4e") should be(Right(123.4, "e"))
+  "evalParser" should "be able to parse simple double" in {
+    parseExpression("123") should be(Right(123.0, ""))
+    parseExpression("-123") should be(Right(-123.0, ""))
+    parseExpression("123.4") should be(Right(123.4, ""))
+    parseExpression("123") should be(Right(123.0, ""))
+    parseExpression("-123") should be(Right(-123.0, ""))
+    parseExpression("-123.") should be(Right(-123.0, "."))
+    parseExpression("00.4") should be(Right(0.0, "0.4"))
+    parseExpression("123e4") should be(Right(1230000.0, ""))
+    parseExpression("123.4e5") should be(Right(12340000.0, ""))
+    parseExpression("123.4e-5") should be(Right(0.001234, ""))
+    parseExpression("123.4e") should be(Right(123.4, "e"))
+  }
+  "evalParser" should "be able to parse simple double between parenthesis" in {
+    parseExpression("(123)") should be(Right(123.0, ""))
+    parseExpression("((123))") should be(Right(123.0, ""))
+    parseExpression("((123)") should be(Left("", ""))
+    parseExpression("()") should be(Left("", ""))
   }
 }

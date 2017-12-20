@@ -1,7 +1,8 @@
 import org.scalatest._
+import utils.InputState
 
 class InputStateTest extends FlatSpec with Matchers {
-  "InputState" should "correctly read chars" in {
+  "utils.InputState" should "correctly read chars" in {
     InputState("").readAll should be (List())
     InputState("a").readAll should be (List('a', '\n'))
     InputState("ab").readAll should be (List('a', 'b', '\n'))
