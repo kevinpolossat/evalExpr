@@ -36,7 +36,9 @@ case object EvalExpr {
     * ;
     */
   private def pFactor: Parser[Double] = {
-    pPrimary
+    pPrimary <|> (
+      (pMinusOrPlus !>>! pFactor) |>> { case (sign, primary) =>
+        if (sign.asInstanceOf[Char] == '-') -primary else primary })
   }
 
   /**
@@ -60,7 +62,7 @@ case object EvalExpr {
     * : "v(" expression ')'
     * ;
     */
-  private def pIdentifier: Parser[Double] = {
+  private def pIdentifier: Parser[Double] = { // TODO add sqrt
     pChar('v') >>! pParenthesisOpen >>! pExpression !>> pParenthesisClose
   }
 
