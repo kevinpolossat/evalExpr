@@ -23,14 +23,25 @@ class EvalExprTest extends FlatSpec with Matchers {
   "evalParser" should "be able to parse simple double between parenthesis" in {
     parseExpression("(123)") should be(Right(123.0, SimpleStringReader("", Position(0,5))))
     parseExpression("((123))") should be(Right(123.0, SimpleStringReader("", Position(0,7))))
-    parseExpression("((123)") should be(Left(")", "No more input"))
-    parseExpression("()") should be(Left("(", "unexpected )"))
+    parseExpression("((123)") should be(Left("+", "unexpected ("))
+    parseExpression("()") should be(Left("+", "unexpected ("))
   }
 
   "evalParser" should "be able to parse identifier" in {
     parseExpression("v(123)") should be(Right(123.0, SimpleStringReader("", Position(0,6))))
     parseExpression("v((123))") should be(Right(123.0, SimpleStringReader("", Position(0,8))))
-    parseExpression("v((123)") should be(Left(("(", "unexpected v")))
-    parseExpression("v()") should be(Left("(", "unexpected v"))
+    parseExpression("v((123)") should be(Left(("+", "unexpected v")))
+    parseExpression("v()") should be(Left("+", "unexpected v"))
+  }
+
+  "evalParser" should "be able to parse factor" in {
+    parseExpression("-v(123)") should be(Right(-123.0, SimpleStringReader("", Position(0,7))))
+    parseExpression("--v(123)") should be(Right(123.0, SimpleStringReader("",Position(0,8))))
+    parseExpression("---v(123)") should be(Right(-123.0, SimpleStringReader("",Position(0,9))))
+    parseExpression("+v((123))") should be(Right(123.0, SimpleStringReader("", Position(0,9))))
+    parseExpression("-123") should be(Right(-123.0, SimpleStringReader("", Position(0,4))))
+    parseExpression("--((123))") should be(Right(123.0, SimpleStringReader("", Position(0,9))))
+    parseExpression("---(123)") should be(Right(-123.0, SimpleStringReader("", Position(0,8))))
+    parseExpression("+(123)") should be(Right(123.0,SimpleStringReader("", Position(0,6))))
   }
 }
