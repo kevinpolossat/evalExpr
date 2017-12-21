@@ -6,7 +6,7 @@ import utils.SimpleStringReader
 import utils.SimpleStringReader._
 
 class ParserTest extends FlatSpec with Matchers {
-  val pCharA: Parser[Char] = satisfy(c => c == 'a', "a")
+/*  val pCharA: Parser[Char] = satisfy(c => c == 'a', "a")
   val pCharB: Parser[Char] = satisfy(c => c == 'b', "b")
   val AandA: Parser[(Char, Char)] = pCharA !>>! pCharA
   val AorB: Parser[Char] = pCharA <|> pCharB
@@ -49,5 +49,5 @@ class ParserTest extends FlatSpec with Matchers {
     pABetweenParenthesis("") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "No more input"))
     pABetweenParenthesis("(a") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "No more input"))
     pABetweenParenthesis("a)") should be (Left("parse open parenthesis andThen a andThen parse closing parenthesis", "unexpected a"))
-  }
+  }*/
 }

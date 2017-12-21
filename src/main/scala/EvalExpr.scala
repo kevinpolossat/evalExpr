@@ -1,17 +1,8 @@
-import utils.Parser
 import utils.Parser._
+import utils.Parser
 
-object EvalExpr extends App {
 
-  def pAddition(): Parser[Double] = ???
-
-  def pDifference(): Parser[Double] = ???
-
-  def pMultiplication(): Parser[Double] = ???
-
-  def pDivision(): Parser[Double] = ???
-
-  def pModulus(): Parser[Double] = ???
+case object EvalExpr {
 
   /**
     * expression
@@ -20,9 +11,8 @@ object EvalExpr extends App {
     * | expression '-' term
     * ;
     */
-  def pExpression(): Parser[Double] = {
-//    pTerm()
-    ???
+  private def pExpression: Parser[Double] = {
+    pTerm
   }
 
   /**
@@ -33,14 +23,11 @@ object EvalExpr extends App {
     * | term '%' factor
     * ;
     */
-  def pTerm(): Parser[Double] = {
-    // ==> choice(parseFactor() | parseTerm choice(parseMult, parseDivide, parseModulus) andThen parseFactor)
-    pFactor()
+  private def pTerm: Parser[Double] = {
+    // ==> choice(parseFactor | parseTerm choice(parseMult, parseDivide, parseModulus) andThen parseFactor)
+    pFactor
   }
 
-  def pMinus(): Parser[Char] = pChar('-')
-  def pPlus(): Parser[Char] = pChar('+')
-  def pMinusOrPlus(): Parser[Char] = pMinus() <|> pPlus()
   /**
     * factor
     * : primary
@@ -48,8 +35,8 @@ object EvalExpr extends App {
     * | '+' factor
     * ;
     */
-  def pFactor(): Parser[Double] = {
-    pPrimary()
+  private def pFactor: Parser[Double] = {
+    pPrimary
   }
 
   /**
@@ -60,64 +47,61 @@ object EvalExpr extends App {
     * | '(' expression ')'
     * ;
     */
-  def pPrimary(): Parser[Double] = {
-    // ==> choice(parseParenthesisOpen andThen parseExpression andThen parseParenthesisClose | parseFloat)
-    pDouble() <|> pBetweenParenthesis()
+  private def pPrimary: Parser[Double] = {
+    pDouble <|> pIdentifier <|> expressionBetweenParenthesis
   }
+
+  private def pMinus = pChar('-')
+  private def pPlus = pChar('+')
+  private def pMinusOrPlus = pMinus <|> pPlus
 
   /**
-    * IDENTIFIER
-    * : "v(" expression ")"
-    * @return
+    * identifier
+    * : "v(" expression ')'
+    * ;
     */
-  def pIdentifier(): Parser[Double] = { // TODO Define list of identifier
-    // ==> "v(" between ")"
-    ???
+  private def pIdentifier: Parser[Double] = {
+    pChar('v') >>! pParenthesisOpen >>! pExpression !>> pParenthesisClose
   }
 
-  /**
-    * '(' expr ')'
-    */
-  def pBetweenParenthesis(): Parser[Double] = {
-    pParenthesisOpen() >>! pExpression !>> pParenthesisClose()
-  }
+  private def expressionBetweenParenthesis: Parser[Double] = pParenthesisOpen >>! pExpression !>> pParenthesisClose
+  
+  private def pChar(charToMatch: Char) = satisfy(c => charToMatch == c, charToMatch.toString)
 
-  def pString(s: String): Parser[String] = (sequence(s.map(pChar)) |>> (_.mkString)) <|?|> s
+  private def pString(s: String) = (sequence(s.map(pChar)) |>> (_.mkString)) <|?|> s
 
-  def pChar(charToMatch: Char): Parser[Elem] = satisfy(c => charToMatch == c, charToMatch.toString)
+  private def pDigit = satisfy(c => c.isDigit, "digit")
 
-  def pDigit(): Parser[Elem] = satisfy(c => c.isDigit, "digit")
-
-  def pNonZeroDigit(): Parser[Char] = {
+  private def pNonZeroDigit = {
     satisfy(c => c.isDigit && c != '0', "1-9")
   }
 
-  def pZero(): Parser[String] = pString("0")
+  private def pZero = pString("0")
 
-  def pNonZero(): Parser[String] = {
-    pNonZeroDigit() !>>! many(pDigit()) |>> { case (first, rest) => first.toString + rest.mkString }
+  private def pNonZero = {
+    pNonZeroDigit !>>! many(pDigit) |>> { case (first, rest) => first.toString + rest.mkString }
   }
 
-  def pOptPlusMinus(): Parser[Option[Char]] = opt(pChar('-') <|> pChar('+'))
+  private def pOptPlusMinus = opt(pChar('-') <|> pChar('+'))
 
-  def pExponentChar(): Parser[Char] = pChar('e') <|> pChar('E')
+  private def pExponentChar = pChar('e') <|> pChar('E')
 
-  def pOptExponent(): Parser[Option[String]] = {
+  private def pOptExponent = {
     opt(
-      pExponentChar >>! pOptPlusMinus() !>>! many1(pDigit()) |>> { case (optSign, digits) =>
+      pExponentChar >>! pOptPlusMinus !>>! many1(pDigit) |>> { case (optSign, digits) =>
         optSign.getOrElse("") + digits.mkString
       })
   }
 
-  def pPoint(): Parser[Char] = pChar('.')
+  private def pPoint = pChar('.')
 
-  def pOptFractionPart(): Parser[Option[String]] = opt(pPoint() >>! (many1(pDigit()) |>> (_.mkString)))
+  private def pOptFractionPart = opt(pPoint >>! (many1(pDigit) |>> (_.mkString)))
 
-  def pInt(): Parser[String] = pZero() <|> pNonZero()
+  private def pInt = pZero <|> pNonZero
 
-  def pOptSign(): Parser[Option[Char]] = opt(pChar('-'))
+  private def pOptSign = opt(pChar('-'))
 
-  def convertToDouble(elements: (((Option[Char], String), Option[String]), Option[String])): Double = elements match {
+  private def convertToDouble(elements: (((Option[Char], String), Option[String]), Option[String])): Double = elements match {
     case (((optSign, intPart), optFractPart), optExponent) =>
       val signEval = optSign.getOrElse("")
       val fractPartEval = optFractPart.map { f => "." + f }.getOrElse("")
@@ -125,13 +109,13 @@ object EvalExpr extends App {
       (signEval + intPart + fractPartEval + exponentEval).toDouble
   }
 
-  def pDouble(): Parser[Double] = pOptSign() !>>! pInt() !>>! pOptFractionPart() !>>! pOptExponent() |>> convertToDouble
+  private def pDouble = pOptSign !>>! pInt !>>! pOptFractionPart !>>! pOptExponent |>> convertToDouble
 
-  def pParenthesisOpen() = pChar('(')
+  private def pParenthesisOpen = pChar('(')
 
-  def pParenthesisClose() = pChar(')')
+  private def pParenthesisClose = pChar(')')
 
-  def evalParser() = pExpression
+  def evalParser = pExpression
 
 
   /**

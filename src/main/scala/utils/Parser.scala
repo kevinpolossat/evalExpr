@@ -9,7 +9,7 @@ case object Parser {
   type ErrorMessage = String
   type ParserLabel = String
   type Success[T] = (T, RemainingInput)
-  type Failure = (ParserLabel, ErrorMessage/*, utils.ParserPosition*/)
+  type Failure = (ParserLabel, ErrorMessage /*, utils.ParserPosition*/ )
   type Result[T] = Either[Failure, Success[T]]
   type ParserFunc[T] = Input => Result[T]
 
@@ -43,7 +43,7 @@ case object Parser {
   }
 
   def many1[T](parser: Parser[T]): Parser[List[T]] = {
-    Parser({ input: Input  => {
+    Parser({ input: Input => {
       parser(input).map { case (firstChar, remainingInput) =>
         val (values, remainingInputRet) = parserZeroOrMore(parser, remainingInput)
         (firstChar :: values, remainingInputRet)
@@ -56,8 +56,8 @@ case object Parser {
     Parser({ in: Input => {
       val cOpt = in.headOption
       cOpt match {
-        case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c"/*, utils.ParserPosition(in)*/)
-        case _ => Left(label, "No more input"/*, utils.ParserPosition(in)*/)
+        case Some(c) => if (predicate(c)) Right(c, in.tail) else Left(label, s"unexpected $c" /*, utils.ParserPosition(in)*/)
+        case _ => Left(label, "No more input" /*, utils.ParserPosition(in)*/)
       }
     }
     }, label)
@@ -71,20 +71,73 @@ case object Parser {
 
   def between[A, B, C](p1: Parser[A], p2: Parser[B], p3: Parser[C]): Parser[B] = p1 >>! p2 !>> p3
 
-  def apply[T](func: ParserFunc[T], label: ParserLabel = "unknown"): Parser[T] = new Parser[T](label){ def apply(in: Input) = func(in) }
+  def apply[T](func: ParserFunc[T], label: ParserLabel = "unknown"): Parser[T] = new Parser[T](label) {
+    def apply(in: Input) = func(in)
+  }
 
   def prettyString[T](res: Result[T]): String = res match {
     case Right(a) => s"$a"
-    case Left((label, errorMessage/*, pos*/)) =>
-/*      val errorLine = pos.currentLine
-      val colPos = pos.column
-      val linePos = pos.line
-      val strError = "%*s^%s".format(colPos, "", errorMessage)
-      s"Line: $linePos, col: $colPos Error parsing $label\n$errorLine\n$strError"*/
+    case Left((label, errorMessage /*, pos*/ )) =>
+      /*      val errorLine = pos.currentLine
+            val colPos = pos.column
+            val linePos = pos.line
+            val strError = "%*s^%s".format(colPos, "", errorMessage)
+            s"Line: $linePos, col: $colPos Error parsing $label\n$errorLine\n$strError"*/
       s"Error parsing expecting $label\n$errorMessage"
   }
 }
 
+abstract case class Parser[T](label: ParserLabel = "unknown") extends ParserFunc[T] {
+  def apply(in: Input): Result[T]
+
+  def map[U](f: T => U): Parser[U] = Parser(this (_).map(x => (f(x._1), x._2)), label)
+
+  def andThen[U](other: => Parser[U]): Parser[(T, U)] = {
+//    lazy val andThenLabel = s"$label andThen ${other.label}"
+    Parser {
+      lazy val p = other
+      this (_)
+        .flatMap { case (matched1, remaining1) =>
+          p(remaining1)
+            .map { case (matched2, remaining2) => ((matched1, matched2), remaining2) }
+        }
+    }// <|?|> andThenLabel
+  }
+
+  def orElse(other: => Parser[T]): Parser[T] = {
+    //lazy val orElseLabel = s"$label orElse ${other.label}"
+    Parser { in =>
+      lazy val p = other
+      this (in) match {
+        case Right(a) => Right(a)
+        case _ => p(in)
+      }
+    }// <|?|> orElseLabel
+  }
+
+  def updateLabel(newLabel: ParserLabel): Parser[T] = {
+    Parser({ in =>
+      this (in) match {
+        case Right(s) => Right(s)
+        case Left((_, error)) => Left(newLabel, error)
+      }
+    }, newLabel)
+  }
+
+  def <|>(other: => Parser[T]): Parser[T] = orElse(other)
+
+  def |>>[B](f: T => B): Parser[B] = map(f)
+
+  def !>>![B](other: => Parser[B]): Parser[(T, B)] = andThen(other)
+
+  def !>>[B](other: Parser[B]): Parser[T] = andThen(other).map { case (a, _) => a }
+
+  def >>![B](other: Parser[B]): Parser[B] = andThen(other).map { case (_, b) => b }
+
+  def <|?|>(newLabel: ParserLabel): Parser[T] = updateLabel(newLabel)
+}
+
+/*
 abstract case class Parser[T](label: ParserLabel = "unknown") extends ParserFunc[T] {
 
   def apply(in: Input): Result[T]
@@ -133,3 +186,4 @@ abstract case class Parser[T](label: ParserLabel = "unknown") extends ParserFunc
 
   def <|?|>(newLabel: ParserLabel): Parser[T] = updateLabel(newLabel)
 }
+*/
