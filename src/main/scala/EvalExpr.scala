@@ -12,7 +12,10 @@ case object EvalExpr {
     * ;
     */
   private def pExpression: Parser[Double] = {
-    pTerm
+    pTerm <|> (pExpression !>>! pMinusOrPlus !>>! pTerm |>> { case ((lhs, sign), rhs) =>
+        if (sign.asInstanceOf[Char] == '-') lhs - rhs
+        else lhs + rhs
+    })
   }
 
   /**
