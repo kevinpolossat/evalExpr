@@ -44,4 +44,8 @@ class EvalExprTest extends FlatSpec with Matchers {
     parseExpression("---(123)") should be(Right(-123.0, SimpleStringReader("", Position(0,8))))
     parseExpression("+(123)") should be(Right(123.0,SimpleStringReader("", Position(0,6))))
   }
+
+  "evalParser" should "be able to compute addition and differences" in {
+    parseExpression("1+2+3+4+5") should be(Right(15.0, SimpleStringReader("")))
+  }
 }
