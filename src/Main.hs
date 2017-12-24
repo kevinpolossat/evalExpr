@@ -234,7 +234,10 @@ expr :: Parser Expr
 expr = term `chainl1` addOp
 
 term :: Parser Expr
-term = factor `chainl1` mulOp
+term = powTerm `chainl1` mulOp
+
+powTerm :: Parser Expr
+powTerm = factor `chainl1` powOp
 
 factor :: Parser Expr
 factor = between spaces primary spaces
@@ -253,7 +256,10 @@ addOp :: Parser (Expr -> Expr -> Expr)
 addOp = (infixOp "+" Add) <|> (infixOp "-" Sub)
 
 mulOp :: Parser (Expr -> Expr -> Expr)
-mulOp = (infixOp "*" Mul) <|> (infixOp "/" Div) <|> (infixOp "%" Mod) <|> (infixOp "^" Pow)
+mulOp = (infixOp "*" Mul) <|> (infixOp "/" Div) <|> (infixOp "%" Mod)
+
+powOp :: Parser(Expr -> Expr -> Expr)
+powOp = (infixOp "^" Pow)
 
 run :: String -> Expr
 run = runParser exprBetweenSpaces
